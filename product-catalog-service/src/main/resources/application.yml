@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: product-catalog-service
+
+grpc:
+  server:
+    port: 9090
+
+catalog:
+  limits:
+    default: 25
+    max: 50
