@@ -20,6 +20,12 @@ service ProductCatalogService {
   rpc UpdateStock (UpdateStockRequest) returns (google.protobuf.Empty);
 
   rpc GetAllCategories (google.protobuf.Empty) returns (stream CategoryResponse);
+
+  rpc CreateCategory (CreateCategoryRequest) returns (CategoryResponse);
+}
+
+message CreateCategoryRequest {
+  string category_name = 1;
 }
 
 message CategoryResponse {
@@ -38,10 +44,11 @@ message GetProductRequest {
 
 message ProductResponse {
   string id = 1;
-  string name = 2;
-  string description = 3;
-  double price = 4;
-  int32 stock_quantity = 5;
+  string seller_id = 2;
+  string name = 3;
+  string description = 4;
+  double price = 5;
+  int32 stock_quantity = 6;
 }
 
 message CreateProductRequest {

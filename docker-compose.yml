@@ -1,0 +1,30 @@
+services:
+  product-postgres:
+    image: postgres:16-alpine
+    container_name: product_catalog_db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ecommerce_db
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+  product-catalog:
+    build:
+      context: ./product-catalog-service
+      dockerfile: Dockerfile
+    container_name: product_catalog_service
+    ports:
+      - "9090:9090"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://product-postgres:5432/ecommerce_db
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - INTERNAL_API_KEY=super_cute_key
+      - JWT_SECRET=super_silly_key_for_jwt
+    depends_on:
+      - product-postgres
+volumes:
+  postgres_data:

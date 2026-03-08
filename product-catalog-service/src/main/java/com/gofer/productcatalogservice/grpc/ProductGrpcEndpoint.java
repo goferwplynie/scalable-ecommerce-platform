@@ -1,6 +1,8 @@
 package com.gofer.productcatalogservice.grpc;
 
 import com.gofer.ecommerce.product.grpc.*;
+import com.gofer.productcatalogservice.security.SecurityInterceptor;
+import com.gofer.productcatalogservice.security.UserRole;
 import com.google.protobuf.Empty;
 import io.grpc.stub.StreamObserver;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +25,7 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
 
         ProductResponse response = ProductResponse.newBuilder()
                 .setId(requestedId)
+                .setSellerId("boykisser")
                 .setName("meow")
                 .setDescription("silly cat :3")
                 .setPrice(20.0)
@@ -62,12 +65,14 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
                 ProductResponse.newBuilder()
                         .setId("1")
                         .setName("cat")
+                        .setSellerId("cutie")
                         .setDescription("meows")
                         .setPrice(10.0)
                         .setStockQuantity(100)
                         .build(),
                 ProductResponse.newBuilder()
                         .setId("2")
+                        .setSellerId("boykisser")
                         .setName("mrreeow")
                         .setDescription("cats")
                         .setPrice(20.0)
@@ -88,8 +93,17 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
         double price = request.getPrice();
         int stockQuantity = request.getStockQuantity();
 
+        UserRole role = SecurityInterceptor.USER_ROLE_KEY.get();
+        if (role != UserRole.SELLER && role != UserRole.ADMIN) {
+            responseObserver.onError(io.grpc.Status.PERMISSION_DENIED.withDescription("Only sellers and admins can create products").asRuntimeException());
+            return;
+        }
+
+        String sellerId = SecurityInterceptor.USER_ID_KEY.get();
+
         ProductResponse response = ProductResponse.newBuilder()
                 .setId("1")
+                .setSellerId(sellerId)
                 .setName(name)
                 .setDescription(description)
                 .setPrice(price)
@@ -105,12 +119,48 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
         String productId = request.getProductId();
         int newStockQuantity = request.getNewStockQuantity();
 
+        if (newStockQuantity < 0) {
+            responseObserver.onError(io.grpc.Status.INVALID_ARGUMENT.withDescription("Stock quantity cannot be negative").asRuntimeException());
+            return;
+        }
 
-        super.updateStock(request, responseObserver);
+        String sellerId = SecurityInterceptor.USER_ID_KEY.get();
+
+        Empty response = Empty.newBuilder().build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void createCategory(CreateCategoryRequest request, StreamObserver<CategoryResponse> responseObserver) {
+        UserRole role = SecurityInterceptor.USER_ROLE_KEY.get();
+        if (role != UserRole.ADMIN) {
+            responseObserver.onError(io.grpc.Status.PERMISSION_DENIED.withDescription("Only admins can create categories").asRuntimeException());
+            return;
+        }
+
+        String categoryName = request.getCategoryName();
+
+        CategoryResponse response = CategoryResponse.newBuilder()
+                .setCategoryName(categoryName)
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 
     @Override
     public void getAllCategories(Empty request, StreamObserver<CategoryResponse> responseObserver) {
-        super.getAllCategories(request, responseObserver);
+
+        List<CategoryResponse> categories = List.of(
+                CategoryResponse.newBuilder().setCategoryName("Cats").build(),
+                CategoryResponse.newBuilder().setCategoryName("Skirts").build(),
+                CategoryResponse.newBuilder().setCategoryName("Socks").build()
+        );
+
+        for (CategoryResponse category : categories) {
+            responseObserver.onNext(category);
+        }
+        responseObserver.onCompleted();
     }
 }
