@@ -1,17 +1,27 @@
 package com.gofer.productcatalogservice.grpc;
 
 import com.gofer.ecommerce.product.grpc.*;
+import com.gofer.productcatalogservice.entity.Category;
+import com.gofer.productcatalogservice.entity.Product;
+import com.gofer.productcatalogservice.exceptions.CategoryNotFoundException;
+import com.gofer.productcatalogservice.exceptions.ProductNotFoundException;
 import com.gofer.productcatalogservice.security.SecurityInterceptor;
 import com.gofer.productcatalogservice.security.UserRole;
+import com.gofer.productcatalogservice.service.CatalogService;
 import com.google.protobuf.Empty;
 import io.grpc.stub.StreamObserver;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.grpc.server.service.GrpcService;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 @GrpcService
+@RequiredArgsConstructor
 public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalogServiceImplBase {
+    private final CatalogService catalogService;
 
     @Value("${catalog.limits.default}")
     private int defaultLimit;
@@ -23,13 +33,29 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
     public void getProduct(GetProductRequest request, StreamObserver<ProductResponse> responseObserver) {
         String requestedId = request.getProductId();
 
+        UUID productId;
+        try {
+            productId = UUID.fromString(requestedId);
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(io.grpc.Status.INVALID_ARGUMENT.withDescription("Invalid product ID format").asRuntimeException());
+            return;
+        }
+
+        Product product;
+        try {
+            product = catalogService.getProductById(productId);
+        } catch (ProductNotFoundException e) {
+            responseObserver.onError(io.grpc.Status.NOT_FOUND.withDescription("Product not found").asRuntimeException());
+            return;
+        }
+
         ProductResponse response = ProductResponse.newBuilder()
-                .setId(requestedId)
-                .setSellerId("boykisser")
-                .setName("meow")
-                .setDescription("silly cat :3")
-                .setPrice(20.0)
-                .setStockQuantity(10)
+                .setId(product.getId().toString())
+                .setSellerId(product.getSellerId().toString())
+                .setName(product.getName())
+                .setDescription(product.getDescription())
+                .setPrice(product.getPrice().doubleValue())
+                .setStockQuantity(product.getStockQuantity())
                 .build();
         responseObserver.onNext(response);
 
@@ -39,10 +65,25 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
     @Override
     public void checkAvailability(CheckAvailabilityRequest request, StreamObserver<AvailabilityResponse> responseObserver) {
         AvailabilityResponse response;
-        String productId = request.getProductId();
+        String requestedId = request.getProductId();
+
+        UUID productId;
+        try {
+            productId = UUID.fromString(requestedId);
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(io.grpc.Status.INVALID_ARGUMENT.withDescription("Invalid product ID format").asRuntimeException());
+            return;
+        }
+
         int requestedQuantity = request.getRequestedQuantity();
 
-        boolean isAvailable = requestedQuantity <= 10;
+        boolean isAvailable;
+        try {
+            isAvailable = catalogService.checkAvailability(productId, requestedQuantity);
+        } catch (ProductNotFoundException e) {
+            responseObserver.onError(io.grpc.Status.NOT_FOUND.withDescription("Product not found").asRuntimeException());
+            return;
+        }
 
         response = AvailabilityResponse.newBuilder()
                 .setIsAvailable(isAvailable)
@@ -61,24 +102,16 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
         //if client provided a limit check if it exceeds max limit and use it otherwise fall back to default limit
         int targetLimit = (request.getLimit() > 0) ? Math.min(request.getLimit(), maxLimit) : defaultLimit;
 
-        List<ProductResponse> products = List.of(
-                ProductResponse.newBuilder()
-                        .setId("1")
-                        .setName("cat")
-                        .setSellerId("cutie")
-                        .setDescription("meows")
-                        .setPrice(10.0)
-                        .setStockQuantity(100)
-                        .build(),
-                ProductResponse.newBuilder()
-                        .setId("2")
-                        .setSellerId("boykisser")
-                        .setName("mrreeow")
-                        .setDescription("cats")
-                        .setPrice(20.0)
-                        .setStockQuantity(50)
-                        .build()
-        );
+        List<ProductResponse> products = catalogService.listProducts(categoryFilter, offset, targetLimit).stream()
+                .map(product -> ProductResponse.newBuilder()
+                        .setId(product.getId().toString())
+                        .setSellerId(product.getSellerId().toString())
+                        .setName(product.getName())
+                        .setDescription(product.getDescription())
+                        .setPrice(product.getPrice().doubleValue())
+                        .setStockQuantity(product.getStockQuantity())
+                        .build())
+                .toList();
 
         for (ProductResponse product : products) {
             responseObserver.onNext(product);
@@ -99,15 +132,36 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
             return;
         }
 
-        String sellerId = SecurityInterceptor.USER_ID_KEY.get();
+        String requestSellerId = SecurityInterceptor.USER_ID_KEY.get();
+
+        UUID sellerId;
+        try {
+            sellerId = UUID.fromString(requestSellerId);
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(io.grpc.Status.INVALID_ARGUMENT.withDescription("Invalid seller ID format").asRuntimeException());
+            return;
+        }
+
+        Product product;
+        try {
+            product = catalogService.createProduct(name,
+                    sellerId,
+                    description,
+                    BigDecimal.valueOf(price),
+                    stockQuantity,
+                    request.getCategory());
+        } catch (CategoryNotFoundException e) {
+            responseObserver.onError(io.grpc.Status.NOT_FOUND.withDescription("Category not found: " + request.getCategory()).asRuntimeException());
+            return;
+        }
 
         ProductResponse response = ProductResponse.newBuilder()
-                .setId("1")
-                .setSellerId(sellerId)
-                .setName(name)
-                .setDescription(description)
-                .setPrice(price)
-                .setStockQuantity(stockQuantity)
+                .setId(product.getId().toString())
+                .setSellerId(product.getSellerId().toString())
+                .setName(product.getName())
+                .setDescription(product.getDescription())
+                .setPrice(product.getPrice().doubleValue())
+                .setStockQuantity(product.getStockQuantity())
                 .build();
 
         responseObserver.onNext(response);
@@ -116,7 +170,15 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
 
     @Override
     public void updateStock(UpdateStockRequest request, StreamObserver<Empty> responseObserver) {
-        String productId = request.getProductId();
+        String requestProductId = request.getProductId();
+        UUID productId;
+        try {
+            productId = UUID.fromString(requestProductId);
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(io.grpc.Status.INVALID_ARGUMENT.withDescription("Invalid product ID format").asRuntimeException());
+            return;
+        }
+
         int newStockQuantity = request.getNewStockQuantity();
 
         if (newStockQuantity < 0) {
@@ -124,7 +186,22 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
             return;
         }
 
-        String sellerId = SecurityInterceptor.USER_ID_KEY.get();
+        String requestSellerId = SecurityInterceptor.USER_ID_KEY.get();
+
+        UUID sellerId;
+        try {
+            sellerId = UUID.fromString(requestSellerId);
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(io.grpc.Status.INVALID_ARGUMENT.withDescription("Invalid seller ID format").asRuntimeException());
+            return;
+        }
+
+        try {
+            catalogService.updateStock(productId, sellerId, newStockQuantity);
+        } catch (ProductNotFoundException e) {
+            responseObserver.onError(io.grpc.Status.NOT_FOUND.withDescription("Product not found or seller does not own the product").asRuntimeException());
+            return;
+        }
 
         Empty response = Empty.newBuilder().build();
         responseObserver.onNext(response);
@@ -141,8 +218,10 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
 
         String categoryName = request.getCategoryName();
 
+        Category category = catalogService.addCategory(categoryName);
+
         CategoryResponse response = CategoryResponse.newBuilder()
-                .setCategoryName(categoryName)
+                .setCategoryName(category.getName())
                 .build();
 
         responseObserver.onNext(response);
@@ -152,11 +231,11 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
     @Override
     public void getAllCategories(Empty request, StreamObserver<CategoryResponse> responseObserver) {
 
-        List<CategoryResponse> categories = List.of(
-                CategoryResponse.newBuilder().setCategoryName("Cats").build(),
-                CategoryResponse.newBuilder().setCategoryName("Skirts").build(),
-                CategoryResponse.newBuilder().setCategoryName("Socks").build()
-        );
+        List<CategoryResponse> categories = catalogService.getAllCategories().stream()
+                .map(category -> CategoryResponse.newBuilder()
+                        .setCategoryName(category.getName())
+                        .build())
+                .toList();
 
         for (CategoryResponse category : categories) {
             responseObserver.onNext(category);
