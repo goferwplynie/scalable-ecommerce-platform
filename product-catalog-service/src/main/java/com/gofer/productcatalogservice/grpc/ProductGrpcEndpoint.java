@@ -56,6 +56,7 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
                 .setDescription(product.getDescription())
                 .setPrice(product.getPrice().doubleValue())
                 .setStockQuantity(product.getStockQuantity())
+                .setCategory(product.getCategory().getName())
                 .build();
         responseObserver.onNext(response);
 
@@ -110,6 +111,7 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
                         .setDescription(product.getDescription())
                         .setPrice(product.getPrice().doubleValue())
                         .setStockQuantity(product.getStockQuantity())
+                        .setCategory(product.getCategory().getName())
                         .build())
                 .toList();
 
@@ -162,6 +164,7 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
                 .setDescription(product.getDescription())
                 .setPrice(product.getPrice().doubleValue())
                 .setStockQuantity(product.getStockQuantity())
+		        .setCategory(product.getCategory().getName())
                 .build();
 
         responseObserver.onNext(response);

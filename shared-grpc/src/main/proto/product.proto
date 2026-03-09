@@ -4,9 +4,11 @@ option java_multiple_files = true;
 option java_package = "com.gofer.ecommerce.product.grpc";
 option java_outer_classname = "ProductProto";
 
+option go_package = "./pb/product/v1;product";
+
 import "google/protobuf/empty.proto";
 
-package product;
+package product.v1;
 
 service ProductCatalogService {
   rpc GetProduct (GetProductRequest) returns (ProductResponse);
@@ -49,6 +51,7 @@ message ProductResponse {
   string description = 4;
   double price = 5;
   int32 stock_quantity = 6;
+  string category = 7;
 }
 
 message CreateProductRequest {
