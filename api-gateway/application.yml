@@ -9,4 +9,4 @@ grpc:
 
 security:
   jwt:
-    secret: "super_silly_key_for_jwt"
+    secret: "super_silly_key_for_jwt_very_long_ilovecutefemboys"

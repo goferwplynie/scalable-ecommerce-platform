@@ -4,13 +4,13 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
-    jpa:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
       hibernate:
-        ddl-auto: update
-      show-sql: true
-      properties:
-        hibernate:
-          format_sql: true
+        format_sql: true
   application:
     name: product-catalog-service
 
@@ -22,8 +22,6 @@ catalog:
   limits:
     default: 25
     max: 50
-
-jwt:
 
 internal:
   security:

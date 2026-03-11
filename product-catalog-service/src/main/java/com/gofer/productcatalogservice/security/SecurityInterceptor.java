@@ -7,6 +7,9 @@ import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 @Slf4j
 @Order(1)
 public class SecurityInterceptor implements ServerInterceptor {
@@ -27,6 +30,8 @@ public class SecurityInterceptor implements ServerInterceptor {
 
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> serverCall, Metadata metadata, ServerCallHandler<ReqT, RespT> serverCallHandler) {
+        log.info("Intercepting call to " + serverCall.getMethodDescriptor().getFullMethodName());
+        log.info(securityProperties.getJwtSecret());
         String incomingApiKey = metadata.get(API_KEY_HEADER);
 
         // verify provided api key. if it's null or wrong return permission denied
@@ -52,16 +57,23 @@ public class SecurityInterceptor implements ServerInterceptor {
             }
 
             String token = authHeader.substring(7);
+            log.info(token);
 
             try {
-                Claims claims = Jwts.parserBuilder()
-                        .setSigningKey(securityProperties.getJwtSecret().getBytes())
+                SecretKey key = new SecretKeySpec(
+                        securityProperties.getJwtSecret().getBytes(),
+                        "HmacSHA256"
+                );
+                Claims claims = Jwts.parser()
+                        .verifyWith(key)
                         .build()
-                        .parseClaimsJws(token)
-                        .getBody();
+                        .parseSignedClaims(token)
+                        .getPayload();
 
                 String userId = claims.getSubject();
                 String role = claims.get("role", String.class);
+
+                log.info("role: " + role);
 
                 Context context = Context.current()
                         .withValue(USER_ID_KEY, userId)
@@ -69,6 +81,7 @@ public class SecurityInterceptor implements ServerInterceptor {
 
                 return Contexts.interceptCall(context, serverCall, metadata, serverCallHandler);
             } catch (Exception e) {
+                log.warn(e.getMessage());
                 serverCall.close(Status.UNAUTHENTICATED.withDescription("Invalid or expired JWT token"), metadata);
                 return new ServerCall.Listener<ReqT>() {
                 };

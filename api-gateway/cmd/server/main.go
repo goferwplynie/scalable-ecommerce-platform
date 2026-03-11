@@ -1,23 +1,27 @@
 package main
 
 import (
+	"fmt"
+
 	"apiGateway/config"
 	"apiGateway/internal/clients"
 	"apiGateway/internal/handlers"
+	"apiGateway/internal/middleware"
 	"apiGateway/internal/utils"
 	product "apiGateway/pb"
-	"fmt"
 
 	"github.com/go-playground/validator/v10"
-	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v3"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
 	config.LoadConfig()
 
-	catalogClient, err := grpc.NewClient(config.Config.Grpc.CatalogService.Address)
+	opts := grpc.WithTransportCredentials(insecure.NewCredentials())
+
+	catalogClient, err := grpc.NewClient(config.Config.Grpc.CatalogService.Address, opts)
 	if err != nil {
 		panic(err)
 	}
@@ -35,12 +39,7 @@ func main() {
 		StructValidator: &validator,
 	})
 
-	jwtMiddleware := jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{
-			Key: []byte(config.Config.Security.Jwt.Secret),
-		},
-	})
-
+	jwtMiddleware := middleware.JWTAuth(config.Config.Security.Jwt.Secret)
 	app.Get("/products/:id", catalogHandler.GetProduct)
 	app.Get("/products", catalogHandler.GetProducts)
 	app.Get("/categories", catalogHandler.GetCategories)

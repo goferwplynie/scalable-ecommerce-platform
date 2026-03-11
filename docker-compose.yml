@@ -23,7 +23,7 @@ services:
       - DB_USERNAME=postgres
       - DB_PASSWORD=password
       - INTERNAL_API_KEY=super_cute_key
-      - JWT_SECRET=super_silly_key_for_jwt
+      - JWT_SECRET=super_silly_key_for_jwt_very_long_ilovecutefemboys
     depends_on:
       - product-postgres
   gateway:
@@ -34,7 +34,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - GATEWAY_SECURITY_JWT_SECRET=super_silly_key_for_jwt
+      - GATEWAY_SECURITY_JWT_SECRET=super_silly_key_for_jwt_very_long_ilovecutefemboys
     depends_on:
       - product-catalog
       

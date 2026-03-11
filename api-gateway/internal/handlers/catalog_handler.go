@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"log"
+
 	"apiGateway/internal/clients"
 	"apiGateway/internal/models"
 	"apiGateway/internal/utils"
@@ -97,6 +99,7 @@ func (h *CatalogHandler) UpdateStock(c fiber.Ctx) error {
 func (h *CatalogHandler) GetCategories(c fiber.Ctx) error {
 	resp, err := h.ProductCatalogClient.GetAllCategories(c.Context())
 	if err != nil {
+		log.Println(err)
 		statusCode, msg := utils.GRPCToHTTPResponse(err)
 		return c.Status(statusCode).JSON(msg)
 	}

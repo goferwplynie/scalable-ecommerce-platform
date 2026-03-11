@@ -130,7 +130,7 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
 
         UserRole role = SecurityInterceptor.USER_ROLE_KEY.get();
         if (role != UserRole.SELLER && role != UserRole.ADMIN) {
-            responseObserver.onError(io.grpc.Status.PERMISSION_DENIED.withDescription("Only sellers and admins can create products").asRuntimeException());
+            responseObserver.onError(io.grpc.Status.PERMISSION_DENIED.withDescription("Only sellers and admins can create products, your role: " + role).asRuntimeException());
             return;
         }
 
@@ -164,7 +164,7 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
                 .setDescription(product.getDescription())
                 .setPrice(product.getPrice().doubleValue())
                 .setStockQuantity(product.getStockQuantity())
-		        .setCategory(product.getCategory().getName())
+                .setCategory(product.getCategory().getName())
                 .build();
 
         responseObserver.onNext(response);
@@ -233,7 +233,6 @@ public class ProductGrpcEndpoint extends ProductCatalogServiceGrpc.ProductCatalo
 
     @Override
     public void getAllCategories(Empty request, StreamObserver<CategoryResponse> responseObserver) {
-
         List<CategoryResponse> categories = catalogService.getAllCategories().stream()
                 .map(category -> CategoryResponse.newBuilder()
                         .setCategoryName(category.getName())
