@@ -3,7 +3,7 @@ package models
 import product "apiGateway/pb"
 
 type GetProductRequest struct {
-	ProductId string `json:"product_id,omitempty"`
+	ProductId string ``
 }
 
 func ProductRequestModelToProto(productRequest GetProductRequest) *product.GetProductRequest {
@@ -13,9 +13,9 @@ func ProductRequestModelToProto(productRequest GetProductRequest) *product.GetPr
 }
 
 type ListProductRequest struct {
-	Category string `json:"category,omitempty"`
-	Offset   int32  `json:"offset,omitempty"`
-	Limit    int32  `json:"limit,omitempty"`
+	Category string `query:"category" validate:"omitempty,min=3"`
+	Offset   int32  `query:"offset" validate:"gte=0"`
+	Limit    int32  `query:"limit" validate:"gte=1"`
 }
 
 func ListRequestModeToProto(listProductRequest ListProductRequest) *product.ListProductsRequest {
@@ -27,11 +27,11 @@ func ListRequestModeToProto(listProductRequest ListProductRequest) *product.List
 }
 
 type CreateProductRequest struct {
-	Name          string  `json:"name,omitempty"`
-	Description   string  `json:"description,omitempty"`
-	Category      string  `json:"category,omitempty"`
-	Price         float64 `json:"price,omitempty"`
-	StockQuantity int32   `json:"stock_quantity,omitempty"`
+	Name          string  `json:"name" validate:"required,min=3,max=255"`
+	Description   string  `json:"description" validate:"omitempty,max=5000"`
+	Category      string  `json:"category" validate:"required,min=3"`
+	Price         float64 `json:"price" validate:"required,gte=1"`
+	StockQuantity int32   `json:"stock_quantity" validate:"required,gte=0"`
 }
 
 func CreateProductModelToProto(m CreateProductRequest) *product.CreateProductRequest {
@@ -45,7 +45,7 @@ func CreateProductModelToProto(m CreateProductRequest) *product.CreateProductReq
 }
 
 type CreateCategoryRequest struct {
-	Name string `json:"name,omitempty"`
+	Name string `json:"name" validate:"required,min=3,max=255"`
 }
 
 func CreateCategoryModelToProto(m CreateCategoryRequest) *product.CreateCategoryRequest {
@@ -55,8 +55,8 @@ func CreateCategoryModelToProto(m CreateCategoryRequest) *product.CreateCategory
 }
 
 type UpdateStockRequest struct {
-	ProductId string `json:"product_id,omitempty"`
-	NewStock  int32  `json:"new_stock,omitempty"`
+	ProductId string `json:"product_id" validate:"required,uuid"`
+	NewStock  int32  `json:"new_stock" validate:"required,gte=0"`
 }
 
 func UpdateStockModelToProto(m UpdateStockRequest) *product.UpdateStockRequest {

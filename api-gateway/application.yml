@@ -1,0 +1,12 @@
+server:
+  port: 8080
+  name: "ecommerce gateway"
+
+grpc:
+  catalog_service:
+    address: "product-catalog:9090"
+    api_key: "super_cute_key"
+
+security:
+  jwt:
+    secret: "super_silly_key_for_jwt"

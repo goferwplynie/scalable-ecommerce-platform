@@ -21,8 +21,8 @@ func NewProductCatalogClient(grpcClient product.ProductCatalogServiceClient) Pro
 	}
 }
 
-func (c ProductCatalogClient) GetProduct(ctx context.Context, token string, req models.GetProductRequest) (*product.ProductResponse, error) {
-	ctxWithAuth := c.setAuth(ctx, token)
+func (c ProductCatalogClient) GetProduct(ctx context.Context, req models.GetProductRequest) (*product.ProductResponse, error) {
+	ctxWithAuth := c.setAuth(ctx)
 	return c.grpcClient.GetProduct(ctxWithAuth, models.ProductRequestModelToProto(req))
 }
 

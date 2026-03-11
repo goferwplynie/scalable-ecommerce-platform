@@ -2,14 +2,16 @@ package config
 
 import (
 	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
 
 type AppConfig struct {
-	Server Server `mapstructure:"server"`
-	Grpc   Grpc   `mapstructure:"grpc"`
-	Redis  Redis  `mapstructure:"redis"`
+	Server   Server   `mapstructure:"server"`
+	Grpc     Grpc     `mapstructure:"grpc"`
+	Redis    Redis    `mapstructure:"redis"`
+	Security Security `mapstructure:"security"`
 }
 
 type Server struct {
@@ -30,12 +32,23 @@ type Redis struct {
 	Address string `mapstructure:"address"`
 }
 
+type Security struct {
+	Jwt Jwt `mapstructure:"jwt"`
+}
+
+type Jwt struct {
+	Secret string `mapstructure:"secret"`
+}
+
 var Config AppConfig
 
 func LoadConfig() {
 	viper.SetConfigName("application")
 	viper.SetConfigType("yml")
 	viper.AddConfigPath(".")
+
+	viper.SetEnvPrefix("GATEWAY")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	viper.AutomaticEnv()
 
