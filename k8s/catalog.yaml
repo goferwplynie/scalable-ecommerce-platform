@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-catalog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-catalog
+  template:
+    metadata:
+      labels:
+        app: product-catalog
+    spec:
+      containers:
+        - name: catalog
+          image: ecommerce-product-catalog:latest
+          imagePullPolicy: Never # <-- Super ważne!
+          ports:
+            - containerPort: 9090
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://product-postgres:5432/ecommerce_db
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-catalog # Tak Gateway znajdzie ten serwis!
+spec:
+  selector:
+    app: product-catalog
+  ports:
+    - protocol: TCP
+      port: 9090
+      targetPort: 9090
